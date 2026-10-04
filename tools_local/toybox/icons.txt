@@ -364,6 +364,11 @@ cat_tricky  = puzzle            # the one list with nothing you can point at
 # thing a 62px row cannot disambiguate).
 instapaper  = bookmark
 
+# Pinboard read-later. A pushpin, not another bookmark: Instapaper owns the
+# bookmark and two readers that read as the same mark is the one thing a 62px
+# row cannot disambiguate. Pinboard is literally a board of pins.
+pinboard    = pin
+
 # Hacker News: the reader's band mark for a saved article.
 saved       = bookmark
 
