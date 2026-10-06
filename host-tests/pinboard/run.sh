@@ -35,3 +35,15 @@ mkdir -p "$BUILD_DIR"
   ../../src/apps_local/pinboard/PinboardSaved.cpp \
   test_saved.cpp -o "$BUILD_DIR/test_saved"
 "$BUILD_DIR/test_saved"
+
+# The two shelves' rows: that a view change rebuilds, that pick marks track the
+# selection without indexing past a racing toggle, and that the empty screens
+# stay distinct.
+"${CXX:-c++}" -std=c++17 -O2 -Wall -Wextra -Werror \
+  -I../../lib/Utf8 \
+  ../../lib/Utf8/Utf8.cpp \
+  ../../src/apps_local/pinboard/PinboardCore.cpp \
+  ../../src/apps_local/pinboard/PinboardSaved.cpp \
+  ../../src/apps_local/pinboard/PinboardRows.cpp \
+  test_rows.cpp -o "$BUILD_DIR/test_rows"
+"$BUILD_DIR/test_rows"

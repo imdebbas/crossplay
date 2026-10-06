@@ -465,3 +465,7 @@ wordle        = spell-check
 # The keyboard's delete key: Lucide's `delete` is a backspace key, which is the
 # thing on every phone keyboard, where an arrow alone read as "go back".
 wordle_delete = delete
+# PINBOARD saves bookmarks; Lucide `pin` is a pushpin, the board's own metaphor
+# and distinct from INSTAPAPER's `bookmark` next to it on the Apps shelf. Until
+# gen_toybox_icons.sh is run the Shelf.cpp row borrows icon_saved_32.
+pinboard      = pin

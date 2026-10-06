@@ -1,0 +1,141 @@
+#include "PinboardLibrary.h"
+
+#include <HalStorage.h>
+#include <Logging.h>
+
+#include <ctime>
+
+namespace pin {
+namespace {
+
+// Plain files in a folder of their own: an index anyone can read in a text
+// editor, one article per file, and the token beside them. Chosen so the day
+// this app is deleted, every article is still there and still readable.
+constexpr const char* kDir = "/.crosspoint/pinboard";
+constexpr const char* kIndex = "/.crosspoint/pinboard/saved.tsv";
+constexpr const char* kToken = "/.crosspoint/pinboard/.token";
+constexpr const char* kTag = "PIN";
+
+std::string articlePath(const std::string& id) { return std::string(kDir) + "/" + id + ".txt"; }
+
+bool readWholeFile(const char* path, std::string& out) {
+  HalFile file;
+  if (!Storage.openFileForRead(kTag, path, file)) return false;
+  out.clear();
+  char buffer[512];
+  int n = 0;
+  while ((n = file.read(reinterpret_cast<uint8_t*>(buffer), sizeof(buffer))) > 0) {
+    out.append(buffer, static_cast<size_t>(n));
+  }
+  file.close();
+  return true;
+}
+
+bool writeWholeFile(const char* path, const std::string& text) {
+  HalFile file;
+  if (!Storage.openFileForWrite(kTag, path, file)) return false;
+  const bool ok =
+      file.write(reinterpret_cast<const uint8_t*>(text.data()), text.size()) == static_cast<int>(text.size());
+  file.close();
+  return ok;
+}
+
+}  // namespace
+
+void Library::load() {
+  if (loaded_) return;
+  loaded_ = true;
+  std::string text;
+  if (!readWholeFile(kIndex, text)) return;  // nothing saved yet is not an error
+  if (!parseSavedIndex(text, articles_)) {
+    LOG_ERR(kTag, "saved index is not in our format; leaving it alone");
+    articles_.clear();
+  }
+  LOG_INF(kTag, "library: %d saved", static_cast<int>(articles_.size()));
+}
+
+bool Library::writeIndex() {
+  Storage.ensureDirectoryExists(kDir);
+  if (writeWholeFile(kIndex, serializeSavedIndex(articles_))) return true;
+  LOG_ERR(kTag, "could not write the saved index");
+  return false;
+}
+
+bool Library::contains(const std::string& url) const {
+  if (url.empty()) return false;
+  const std::string id = savedIdFor(url);
+  for (const SavedArticle& article : articles_) {
+    if (article.id == id) return true;
+  }
+  return false;
+}
+
+bool Library::save(const std::string& url, const std::string& title, const std::string& text) {
+  if (url.empty()) return false;
+  load();
+
+  const std::string id = savedIdFor(url);
+  Storage.ensureDirectoryExists(kDir);
+  if (!writeWholeFile(articlePath(id).c_str(), text)) {
+    LOG_ERR(kTag, "could not write the article");
+    return false;
+  }
+
+  // Replace rather than append, so saving the same page twice is one entry.
+  for (SavedArticle& existing : articles_) {
+    if (existing.id != id) continue;
+    existing.title = title;
+    return writeIndex();
+  }
+
+  SavedArticle article;
+  article.id = id;
+  article.title = title;
+  article.url = url;
+  article.savedAt = static_cast<uint32_t>(std::time(nullptr));
+  articles_.push_back(std::move(article));
+  LOG_INF(kTag, "saved %s (%d bytes)", id.c_str(), static_cast<int>(text.size()));
+  return writeIndex();
+}
+
+bool Library::remove(const std::string& url) {
+  if (url.empty()) return false;
+  load();
+
+  const std::string id = savedIdFor(url);
+  const size_t before = articles_.size();
+  for (size_t i = 0; i < articles_.size(); ++i) {
+    if (articles_[i].id != id) continue;
+    articles_.erase(articles_.begin() + static_cast<long>(i));
+    break;
+  }
+  if (articles_.size() == before) return false;
+
+  writeIndex();
+  Storage.remove(articlePath(id).c_str());
+  LOG_INF(kTag, "unsaved %s", id.c_str());
+  return true;
+}
+
+bool Library::readArticle(const SavedArticle& article, std::string& out) const {
+  return readWholeFile(articlePath(article.id).c_str(), out);
+}
+
+std::string Library::loadToken() const {
+  std::string raw;
+  if (!readWholeFile(kToken, raw)) return {};
+  // Trim a trailing newline the write never adds but a hand-edit might.
+  while (!raw.empty() && (raw.back() == '\n' || raw.back() == '\r')) raw.pop_back();
+  return raw;
+}
+
+bool Library::saveToken(const std::string& token) {
+  Storage.ensureDirectoryExists(kDir);
+  if (writeWholeFile(kToken, token)) return true;
+  LOG_ERR(kTag, "could not write the token");
+  return false;
+}
+
+void Library::clearToken() { Storage.remove(kToken); }
+
+}  // namespace pin
