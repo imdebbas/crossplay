@@ -86,7 +86,10 @@ constexpr shelf::Item kApps[] = {
     {"HACKER NEWS", &icon_hackernews_32, &HackerNewsActivity::create},
     {"XKCD", &icon_xkcd_32, &XkcdActivity::create},
     {"INSTAPAPER", &icon_instapaper_32, &InstapaperActivity::create},
-    {"PINBOARD", &icon_pinboard_32, &PinboardActivity::create},
+    // Placeholder icon so the app links without regenerating ToyboxIcons.h
+    // (that needs librsvg + the lucide SVGs). icons.txt already defines
+    // `pinboard = pin`; once it's generated, swap this to &icon_pinboard_32.
+    {"PINBOARD", &icon_instapaper_32, &PinboardActivity::create},
     {"WALLPAPERS", &icon_wallpapers_32, &WallpapersActivity::create},
     {"WIKIPEDIA", &icon_wikipedia_32, &WikipediaActivity::create},
     {"CALCULATOR", &icon_calculator_32, &CalculatorActivity::create},
